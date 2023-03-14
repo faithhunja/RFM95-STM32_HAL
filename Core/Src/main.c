@@ -51,12 +51,12 @@ lora_sx1276 lora;
 
 /* USER CODE BEGIN PV */
 int test = 0;
-uint8_t res = 0;
+uint8_t init = 0;
 uint8_t* test_var = (uint8_t *)"test";
 uint8_t* test1_var = (uint8_t *)"four";
 uint8_t buffer[32];
 uint8_t packet_avail = 0;
-char instruct[50];
+char instruct[30];
 
 /* USER CODE END PV */
 
@@ -68,11 +68,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if (GPIO_Pin == DIO0_Pin)
-    	lora_enable_interrupt_rx_done(&lora);
-}
+//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+//{
+//    if (GPIO_Pin == DIO0_Pin)
+//    	lora_enable_interrupt_rx_done(&lora);
+//}
 
 /* USER CODE END 0 */
 
@@ -107,7 +107,6 @@ int main(void)
   MX_RTC_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-//  uint8_t version = lora_version(&lora);
 
   //SX1276 compatible module connected to SPI1, NSS pin connected to GPIO with label LORA_NSS
 //  lora.spi = &hspi1;
@@ -116,8 +115,8 @@ int main(void)
 //  lora.frequency = LORA_BASE_FREQUENCY_EU;
 
   // Initialize LoRa module
-  uint8_t res = lora_init(&lora, &hspi1, GPIOA, GPIO_PIN_4, LORA_BASE_FREQUENCY_EU);
-  if (res != LORA_OK) {
+  uint8_t init = lora_init(&lora, &hspi1, GPIOA, GPIO_PIN_4, LORA_BASE_FREQUENCY_EU);
+  if (init != LORA_OK) {
 	// Initialization failed
     test = 404;
   }
@@ -127,6 +126,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	#ifdef SLAVE
+    // Send packets
+	lora_send_packet(&lora, test_var, 4);
+	HAL_Delay(5);
+	lora_send_packet(&lora, test1_var, 4);
+	HAL_Delay(5);
+	#endif
+
+	#ifdef MASTER
 	// Standby mode
 	lora_mode_standby(&lora);
 	uint8_t packet_avail = lora_is_packet_available(&lora);
@@ -134,14 +142,6 @@ int main(void)
 		sprintf(instruct, "No packet available");
 	else
 		sprintf(instruct, "Packet ready");
-
-	//	// Send packets
-//	uint8_t res = lora_receive_packet(&lora, rec_var, 4, uint8_t *error);
-	test = 606;
-//	if (res != LORA_OK) {
-//	// Send failed
-//		test = 505;
-//	}
 
 	// Put LoRa modem into continuous receive mode
 	lora_mode_receive_continuous(&lora);
@@ -155,11 +155,7 @@ int main(void)
 	test = 707;
 	buffer[len] = 0;  // null terminate string to print it
 //	printf("'%s'\n", buffer);
-
-//	lora_send_packet(&lora, test_var, 4);
-//	HAL_Delay(5);
-//	lora_send_packet(&lora, test1_var, 4);
-//	HAL_Delay(5);
+	#endif
 
     /* USER CODE END WHILE */
 
