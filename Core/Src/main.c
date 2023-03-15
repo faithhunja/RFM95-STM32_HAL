@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "rtc.h"
 #include "spi.h"
 #include "gpio.h"
 
@@ -33,7 +32,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-lora_sx1276 lora;
 
 /* USER CODE END PTD */
 
@@ -43,8 +41,8 @@ lora_sx1276 lora;
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-//#define MASTER
-#define SLAVE
+//#define MASTER //Sender
+#define SLAVE //Receiver(s)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -68,11 +66,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-//{
-//    if (GPIO_Pin == DIO0_Pin)
-//    	lora_enable_interrupt_rx_done(&lora);
-//}
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 /* USER CODE END 0 */
 
@@ -92,6 +86,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  lora_sx1276 lora;
 
   /* USER CODE END Init */
 
@@ -104,15 +99,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_RTC_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-
-  //SX1276 compatible module connected to SPI1, NSS pin connected to GPIO with label LORA_NSS
-//  lora.spi = &hspi1;
-//  lora.nss_port = GPIOA;
-//  lora.nss_pin = GPIO_PIN_4;
-//  lora.frequency = LORA_BASE_FREQUENCY_EU;
 
   // Initialize LoRa module
   uint8_t init = lora_init(&lora, &hspi1, GPIOA, GPIO_PIN_4, LORA_BASE_FREQUENCY_EU);
@@ -120,6 +108,21 @@ int main(void)
 	// Initialization failed
     test = 404;
   }
+
+  void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+  {
+      if (GPIO_Pin == DIO0_Pin)
+      {
+  		#ifdef SLAVE
+      	lora_enable_interrupt_rx_done(&lora);
+  		#endif
+
+  		#ifdef MASTER
+      	lora_enable_interrupt_tx_done(&lora);
+  		#endif
+      }
+  }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -127,11 +130,18 @@ int main(void)
   while (1)
   {
 	#ifdef SLAVE
-    // Send packets
+    // Send packets in blocking mode
 	lora_send_packet(&lora, test_var, 4);
 	HAL_Delay(5);
 	lora_send_packet(&lora, test1_var, 4);
 	HAL_Delay(5);
+
+	uint8_t packet_avail = lora_is_transmitting(&lora);
+		if (packet_avail == 0)
+			sprintf(instruct, "No packet transmission");
+		else
+			sprintf(instruct, "Transmitting packet");
+
 	#endif
 
 	#ifdef MASTER
@@ -161,6 +171,11 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
   }
+  lora_mode_sleep(&lora);
+
+  #ifdef SLAVE
+  lora_clear_interrupt_tx_done(&lora);
+  #endif
   /* USER CODE END 3 */
 }
 
@@ -172,16 +187,14 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL4;
@@ -200,12 +213,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
-  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
