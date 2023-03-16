@@ -7,5 +7,3 @@
 ../Core/Src/stm32f1xx_it.c:157:6:DebugMon_Handler	0	static
 ../Core/Src/stm32f1xx_it.c:170:6:PendSV_Handler	0	static
 ../Core/Src/stm32f1xx_it.c:183:6:SysTick_Handler	0	static
-../Core/Src/stm32f1xx_it.c:204:6:EXTI3_IRQHandler	0	static
-../Core/Src/stm32f1xx_it.c:218:6:RTC_Alarm_IRQHandler	0	static

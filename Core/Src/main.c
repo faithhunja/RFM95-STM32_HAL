@@ -49,12 +49,12 @@
 
 /* USER CODE BEGIN PV */
 int test = 0;
-uint8_t init = 0;
 uint8_t* test_var = (uint8_t *)"test";
 uint8_t* test1_var = (uint8_t *)"four";
 uint8_t buffer[32];
 uint8_t packet_avail = 0;
-char instruct[30];
+char instruct[50];
+char version[10];
 
 /* USER CODE END PV */
 
@@ -66,7 +66,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
 /* USER CODE END 0 */
 
@@ -107,21 +107,31 @@ int main(void)
   if (init != LORA_OK) {
 	// Initialization failed
     test = 404;
-  }
+  } else
+	  test = 505;
 
-  void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-  {
-      if (GPIO_Pin == DIO0_Pin)
-      {
-  		#ifdef SLAVE
-      	lora_enable_interrupt_rx_done(&lora);
-  		#endif
+//  uint8_t* ver = (uint8_t *)lora_version(&lora);
 
-  		#ifdef MASTER
-      	lora_enable_interrupt_tx_done(&lora);
-  		#endif
-      }
+  char version = lora_version(&lora);
+  uint8_t ver = lora_version(&lora);
+  if (ver != LORA_COMPATIBLE_VERSION) {
+    sprintf(instruct, "Got wrong radio version 0x%x, expected 0x12", ver);
+    sprintf(version, "0x%x", ver);
+    return LORA_ERROR;
   }
+//  void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+//  {
+//      if (GPIO_Pin == DIO0_Pin)
+//      {
+//  		#ifdef SLAVE
+//      	lora_enable_interrupt_rx_done(&lora);
+//  		#endif
+//
+//  		#ifdef MASTER
+//      	lora_enable_interrupt_tx_done(&lora);
+//  		#endif
+//      }
+//  }
 
   /* USER CODE END 2 */
 
@@ -130,6 +140,8 @@ int main(void)
   while (1)
   {
 	#ifdef SLAVE
+	lora_mode_standby(&lora);
+	test = 606;
     // Send packets in blocking mode
 	lora_send_packet(&lora, test_var, 4);
 	HAL_Delay(5);
@@ -173,9 +185,9 @@ int main(void)
   }
   lora_mode_sleep(&lora);
 
-  #ifdef SLAVE
-  lora_clear_interrupt_tx_done(&lora);
-  #endif
+//  #ifdef SLAVE
+//  lora_clear_interrupt_tx_done(&lora);
+//  #endif
   /* USER CODE END 3 */
 }
 
